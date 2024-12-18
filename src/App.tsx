@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import "primereact/resources/themes/saga-blue/theme.css";
+import "primereact/resources/primereact.min.css";
+import "primeicons/primeicons.css";
 
 interface Artwork {
   id: number;
@@ -9,8 +12,8 @@ interface Artwork {
   place_of_origin: string;
   artist_display: string;
   inscriptions: string;
-  date_start: number;
-  date_end: number;
+  date_start: number | string;
+  date_end: number | string;
 }
 
 const App: React.FC = () => {
@@ -31,36 +34,37 @@ const App: React.FC = () => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `https://api.artic.edu/api/v1/artworks?page=${pageNumber}&limit=${rowsPerPage}`
+        ` https://api.artic.edu/api/v1/artworks?page=${pageNumber}&limit=${rowsPerPage}`
       );
       const { data, pagination } = response.data;
 
-      setArtworks(
-        data.map((item: any) => ({
-          id: item.id,
-          title: item.title,
-          place_of_origin: item.place_of_origin || "Unknown",
-          artist_display: item.artist_display || "Unknown Artist",
-          inscriptions: item.inscriptions || "",
-          date_start: item.date_start || "N/A",
-          date_end: item.date_end || "N/A",
-        }))
-      );
-      setTotalRecords(pagination.total);
+      const formattedArtworks: Artwork[] = data.map((item: any) => ({
+        id: item.id,
+        title: item.title || "Untitled",
+        place_of_origin: item.place_of_origin || "Unknown",
+        artist_display: item.artist_display || "Unknown Artist",
+        inscriptions: item.inscriptions || "None",
+        date_start: item.date_start || "N/A",
+        date_end: item.date_end || "N/A",
+      }));
+
+      setArtworks(formattedArtworks);
+      setTotalRecords(pagination.total || 0);
     } catch (error) {
       console.error("Error fetching data:", error);
+      alert("Failed to fetch artworks. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const onPageChange = (event: any) => {
+  const onPageChange = (event: { page: number }) => {
     setPage(event.page);
   };
 
-  const onSelectionChange = (event: any) => {
-    const selectedMap = new Map(
-      event.value.map((item: Artwork) => [item.id, item])
+  const onSelectionChange = (event: { value: Artwork[] }) => {
+    const selectedMap = new Map<number, Artwork>(
+      event.value.map((item) => [item.id, item])
     );
     setSelectedRows(selectedMap);
   };
@@ -72,6 +76,7 @@ const App: React.FC = () => {
   return (
     <div className="p-4">
       <h1>Artworks Table</h1>
+      {loading && <p>Loading artworks...</p>}
       <DataTable
         value={artworks}
         paginator
@@ -84,7 +89,7 @@ const App: React.FC = () => {
         selectionMode="checkbox"
         selection={Array.from(selectedRows.values())}
         onSelectionChange={onSelectionChange}
-        rowClassName={(row) => (isSelected(row) ? "p-highlight" : "")}
+        rowClassName={(row: Artwork) => (isSelected(row) ? "p-highlight" : "")}
       >
         <Column
           selectionMode="multiple"
